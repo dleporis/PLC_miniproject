@@ -15,7 +15,7 @@ The programs must perform the following operations:
 - [ ] The decoded data shall be stored in a file on the PC, so that it can be analyzed later.
 
 The "estimated processing time" is given a priori as a CSV-file (see under PLC-workshop lecture) and will have to be read into memory before realtime execution on the PC,.
-- [ ] estimated processing time.CSV is loaded
+- [x] estimated processing time.CSV is loaded
 
 In the mini-project you are allowed to design and develop your code as a group, but it shall be documented in a small, individual report, containing:
 
