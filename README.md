@@ -16,6 +16,7 @@ The programs must perform the following operations:
 
 The "estimated processing time" is given a priori as a CSV-file (see under PLC-workshop lecture) and will have to be read into memory before realtime execution on the PC,.
 - [x] estimated processing time.CSV is loaded
+- [ ] get the estimated processing time of a specific carrier-process_station combination whenever needed
 
 In the mini-project you are allowed to design and develop your code as a group, but it shall be documented in a small, individual report, containing:
 
