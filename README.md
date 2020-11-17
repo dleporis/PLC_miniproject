@@ -7,12 +7,12 @@ Create two programs:
 
 The programs must perform the following operations:
 
--[x] Read the pallet RFID tag when a pallet moves to the module you are working on
--[ ] Send the RFID info to a PC via TCP/IP as an XML-encoded string
--[ ] The PC program shall decode the information and display the relevant information on screen during program execution
--[ ] The PC program shall return an estimated processing time to the PLC via TCP/IP
--[ ] The PLC shall simulate the physical processing time by letting the pallet wait for the returned time.
--[ ] The decoded data shall be stored in a file on the PC, so that it can be analyzed later.
+- [x] Read the pallet RFID tag when a pallet moves to the module you are working on
+- [ ] Send the RFID info to a PC via TCP/IP as an XML-encoded string
+- [ ] The PC program shall decode the information and display the relevant information on screen during program execution
+- [ ] The PC program shall return an estimated processing time to the PLC via TCP/IP
+- [ ] The PLC shall simulate the physical processing time by letting the pallet wait for the returned time.
+- [ ] The decoded data shall be stored in a file on the PC, so that it can be analyzed later.
 
 The "estimated processing time" is given a priori as a CSV-file (see under PLC-workshop lecture) and will have to be read into memory before realtime execution on the PC,.
 
