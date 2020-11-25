@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<arrival>
+    <station>
+        <ID>10</ID>
+    </station>
+    <carrier>
+        <RFID>1</RFID>
+    </carrier>
+    <request>estim_time</request>
+    <request>command</request>
+</arrival>
