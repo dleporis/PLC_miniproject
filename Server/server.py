@@ -36,7 +36,7 @@ s.listen(5) #queue of 5 msgs
 
 
 # arbitrary variables just for testing
-station_id = 13
+station_id = 12
 rfid = 8
 estim_process_time = 52680836 #ptf.get_est_proc_time(rfid, station_id)
 
@@ -78,25 +78,18 @@ make_xml_cmd("junction", side)
 #indent_xml(root)
 
 tree = etree.ElementTree(root)
-msg = etree.tostring(root, encoding='utf-8', method='xml')
-xml_header = """<?xml version="1.0" encoding="UTF-8"?>"""
-#xml_header_str = xml_header.decode('utf-8')
-print(xml_header)
-msg = xml_header + msg
+msg = etree.tostring(root, encoding="unicode", method="xml")
 print(msg)
 
 while True:
     clientsocket, address = s.accept()
     print(f"Connection from {address} has been estabilished")
     
-    msg = "Welcome to the server!"
+    #msg = "Welcome to the server!"
     print(msg)
     msg = f'{len(msg):<{HEADERSIZE}}'+msg # check f-string formatting
     
     clientsocket.send(bytes(msg, "utf-8"))
 
     while True:
-        time.sleep(3)
-        msg = f"The time is {time.time()}"
-        msg = f'{len(msg):<{HEADERSIZE}}'+msg
-        clientsocket.send(bytes(msg, "utf-8"))
+        msg = ""
