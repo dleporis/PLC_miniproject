@@ -40,9 +40,6 @@ station_id = 12
 rfid = 8
 estim_process_time = 52680836 #ptf.get_est_proc_time(rfid, station_id)
 
-
-info_to_send = {'time_stamp':'aaa','age':21,'sal':5000}
-
 # make xml
 root = etree.Element("server_response")
 
