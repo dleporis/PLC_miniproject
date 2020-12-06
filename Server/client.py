@@ -176,7 +176,7 @@ if __name__ == "__main__":
                 # make and send the xml message
                 client_request_string = xml_string_writer(arrived_time_stamp, STATIONID, arrived_rfid)
                 msg_send = f'{len(client_request_string):<{HEADERSIZE}}'+client_request_string # check f-string formatting
-                serversocket.send(bytes(msg_send, "utf-8"))
+                s.send(bytes(msg_send, "utf-8"))
                 
                
             #check for messages
