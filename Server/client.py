@@ -42,7 +42,6 @@ def xml_string_writer(time_stamp, station_id, rfid):
     request_elem = etree.Element("request")
     root.append(request_elem)
     request_elem.text = "estim_time"
-
     request_elem = etree.Element("request")
     root.append(request_elem)
     request_elem.text = "commands"
@@ -50,23 +49,21 @@ def xml_string_writer(time_stamp, station_id, rfid):
 
     tree = etree.ElementTree(root)
     xml_string = etree.tostring(root, encoding="unicode", method="xml")
-    print("request:")
-    print(xml_string)
     return xml_string
 
-def xml_string_parser(recieved_xml_string):
+def server_response_parser(recieved_xml_string, junct_state):
     prefix = "<server_response>"
     suffix = "</server_response>"   
     if recieved_xml_string.startswith(prefix) == False or recieved_xml_string.endswith(suffix) == False:
         new_msg_recieving = True
         #full_msg = ''
-        print("prefix or suffix not found")
+        print("prefix or suffix not found, there might be an issue in server.py or client.py")
         #continue
     else:
         tree = etree.ElementTree(etree.fromstring(recieved_xml_string))
         root = tree.getroot()
         children = root.getchildren()
-        print(children)
+        # print(children)
         '''
         [<Element 'time_stamp' at 0x0000023EF5EDD908>, <Element 'station' at 0x0000023EF61E4D18>,
         <Element 'carrier' at 0x0000023EF624E228>, <Element 'estim_time' at 0x0000023EF6258958>, 
@@ -86,19 +83,13 @@ def xml_string_parser(recieved_xml_string):
         for estim_time_elem in root.iter("estim_time"):
             estim_time_recieved = estim_time_elem.text
 
-
-        print(f"Server sent the response at {server_time_stamp} s")
+        print('{:-^70}'.format('Server response summary'))
+        print(f"Server response timestamp: {server_time_stamp} s")
         print(f"The commands are for the station with ID: {station_id_recieved}")
-        if station_id_recieved == STATIONID:
-            print("The command station ID matches the actual station ID")
-        else:
-            print("The command station ID doesn't match the actual station ID")
-            print(f"The command station ID is {station_id_recieved}, while the actual station ID is {STATIONID}")
-            return
-
         print(f"The commands are for the carrier with RFID: {rfid_recieved}")
         print(f"The estimated processing time is: {estim_time_recieved}")
 
+        print('{:-^70}'.format('Execute server commands'))
         for command_elem in root.iter("command"):
             for cmd_elem in command_elem.iter("cmd"):
                 cmd = cmd_elem.text
@@ -107,17 +98,16 @@ def xml_string_parser(recieved_xml_string):
             print(f"Command: {cmd} with value {val}")
             
             # execute commands
-            print("\nCommand execution:")
             if cmd == "junction":
-                if val == junction_state:
-                    print (f"Keep junction in {junction_state} position")
+                if val == junct_state:
+                    print (f"Keep junction in {junct_state} position!")
                 else:
-                    print(f"Switch junction to {val} position")
-                    junction_state = val
+                    print(f"Switch junction to {val} position!")
+                    junct_state = val
             elif cmd == "wait":
-                print(f"set timer for {val} ms, and then release the carrier")
-                time.sleep(val/1000)
-                print(f"Carrier {rfid_recieved} released")
+                print(f"Set timer for {val} ms, and then release the carrier!")
+                # time.sleep(val/1000)
+        print(f"Carrier {rfid_recieved} released")
 
 if __name__ == "__main__":
     # CONSTANTS
@@ -156,7 +146,9 @@ if __name__ == "__main__":
         new_carrier_here = False
         while True:
             if new_carrier_here == False:
-                input("Press any key for the carrier to aproach the station...")
+                print("\n*********************************************************************")
+                input('{:*^70}'.format('Press enter for the carrier to aproach the station'))
+                # input("Press enter for the carrier to aproach the station...")
                 print("Carrier approaching...")
                 time.sleep(0.2)
                 print("Slowing down conveyor belt...")
@@ -171,10 +163,13 @@ if __name__ == "__main__":
                 print("Reading RFID...")
                 arrived_rfid = randint(1, 15)
                 time.sleep(0.2)
+                print('{:-^70}'.format('Arrival summary'))
                 print(f"The carier with RFID {arrived_rfid} arrived at time {arrived_time_stamp} s from EPOCH, which is {arrived_time_utc} in UTC.")
                 
                 # make and send the xml message
+                print('{:-^70}'.format('Client request message'))
                 client_request_string = xml_string_writer(arrived_time_stamp, STATIONID, arrived_rfid)
+                print(client_request_string)
                 msg_send = f'{len(client_request_string):<{HEADERSIZE}}'+client_request_string # check f-string formatting
                 s.send(bytes(msg_send, "utf-8"))
                 
@@ -182,8 +177,10 @@ if __name__ == "__main__":
             #check for messages
             msg = s.recv(16) #buffer
             if new_msg:
-                print(f"new message length {msg[:HEADERSIZE]}")
+                print('{:-^70}'.format('Recieving server response'))
+                
                 msglen = int(msg[:HEADERSIZE])
+                print(f"Message length: {msglen}")
                 new_msg = False
 
             full_msg += msg.decode("utf-8") 
@@ -192,10 +189,11 @@ if __name__ == "__main__":
             if len(full_msg) - HEADERSIZE == msglen:
                 
                 full_msg_cleaned = full_msg [HEADERSIZE:]
-                print("full msg recieved:")
+                print("Full msg recieved:")
                 print(full_msg_cleaned)
                 
-                xml_string_parser(full_msg_cleaned)
+                #parse the server response the commands
+                server_response_parser(full_msg_cleaned, junction_state)
                 print ("Wait for another carrier...")
                 new_carrier_here = False
                 new_msg = True
