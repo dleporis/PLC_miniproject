@@ -36,7 +36,7 @@ class ProcessingTimesFinder():
         self.csv_data = []
 
         with open('processing_times_table.csv', newline='') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=';', quotechar=';')
+            spamreader = csv.reader(csvfile, delimiter=',', quotechar=',')
             for index, row in enumerate(spamreader, start=0):
                 if index == 0:
                     self.station_ids = row
