@@ -1,7 +1,7 @@
 import os
+import csv
 import sys
-import pandas as pd
-import numpy as np
+# import pandas as pd
 import sqlite3
 import socket
 import time
@@ -21,7 +21,7 @@ class ProcessingTimesFinder():
         '''
         
         self.file_name = os.path.join(self.path, filename)
-        
+        '''
         # load csv with panda
         self.data_frame = pd.read_csv(self.file_name) #import csv
         self.data_frame.info()
@@ -29,7 +29,23 @@ class ProcessingTimesFinder():
 
         self.processing_times_array = self.data_frame.select_dtypes(include=int).to_numpy()
         print (self.processing_times_array) # whole array
-        
+        '''
+
+        self.station_ids = []
+        self.carrier_ids = []
+        self.csv_data = []
+
+        with open('processing_times_table.csv', newline='') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=';', quotechar=';')
+            for index, row in enumerate(spamreader, start=0):
+                if index == 0:
+                    self.station_ids = row
+                    print('\n{:-^100}'.format('Carrier RFID (row 1 - 16) x Station ID (row 1 - 16) matrix'))
+                else:
+                    self.carrier_ids.append(row.pop(0))
+                    self.csv_data.append(row)
+                    print(row)
+
         '''
         # help regarding the processing_times_array
         print(processing_times_array[0,0]) # Carrier#1 Station#01
@@ -39,11 +55,10 @@ class ProcessingTimesFinder():
         '''
         
     def get_est_proc_time(self, carrier_RFID, station_ID):
-        # find the estimated processing time
-        carrier_RFID = 1 # later will be extracted from XML recieved from the PLC
-        station_ID = 10 # this is the station at smartlab we operate, change manually, we will not automate this during the miniproject
-        estimated_process_time = self.processing_times_array[carrier_RFID - 1, station_ID - 1]
-        print("Estimated process time: ", estimated_process_time)
+        '''
+        find the estimated processing time
+        '''
+        estimated_process_time = self.csv_data[carrier_RFID - 1][ station_ID - 1]
         return estimated_process_time
 
 def create_table(curs):
@@ -81,9 +96,8 @@ def response_handler(time_stamp, arr_time_stamp, station_id, rf_id, estim_proces
     wait_time = estim_process_time
     if rf_id <= 5:
         side = "left"
-        wait_time = wait_time + 2 # 2 seconds
     elif rf_id > 5:
-        side = "straight"
+        side = "right"
 
     def make_xml_cmd(command_type, value):
         command_elem = etree.Element("command")
@@ -149,7 +163,7 @@ def xml_string_parser(recieved_xml_string):
     else:
         tree = etree.ElementTree(etree.fromstring(recieved_xml_string))
         root = tree.getroot()
-        children = root.getchildren()
+        # children = root.getchildren()
         # print(children) # prints out the list of the root children
 
         for time_stamp_elem in root.iter("time_stamp"):
@@ -182,9 +196,13 @@ def indent_xml(elem, level=0):
 
 
 if __name__ == "__main__":
-    
+    print(sys.version)
+    print(sys.executable)
+    print('\n{:-^70}'.format('Server startup'))
+
     # initialize ProcessingTimesFinder
     ptf = ProcessingTimesFinder('processing_times_table.csv')
+   
 
     # figxed length header
     HEADERSIZE = 10
@@ -209,7 +227,6 @@ if __name__ == "__main__":
         '''
         msg = "Welcome to the server!"
         msg = f"{len(msg):<{HEADERSIZE}}"+msg
-
         clientsocket.send(bytes(msg,"utf-8"))
         '''
 
@@ -247,6 +264,8 @@ if __name__ == "__main__":
                 
                 # get estimated process time
                 # estimated_process_time = 112233445566 # test
+                print(f"rfid_recv: {rfid_recv}")
+                print(f"station_id_recv: {station_id_recv}")
                 estimated_process_time = ptf.get_est_proc_time(rfid_recv, station_id_recv)
                 # save to log here
                 
