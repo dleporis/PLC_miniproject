@@ -1,4 +1,5 @@
 import socket
+import sys
 from random import *
 import time
 import datetime
@@ -112,6 +113,10 @@ def server_response_parser(recieved_xml_string, junct_state):
         print(f"Carrier {rfid_recieved} released!")
 
 if __name__ == "__main__":
+    print(sys.version)
+    print(sys.executable)
+    print('\n{:-^70}'.format('Client startup'))
+
     # CONSTANTS
     # figxed length header
     HEADERSIZE = 10
