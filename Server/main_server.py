@@ -69,13 +69,16 @@ class ProcessingTimesFinder():
 def create_table(curs):
     curs.execute("CREATE TABLE IF NOT EXISTS dataProdStation(StationID INTEGER, rfid INTEGER, arrivalUnix REAL, arrivalStamp TEXT, EstimProcessTime REAL, command1 TEXT, value1 REAL, command2 TEXT, value2 TEXT)")
 
-def dynamic_data_entry(sql_connection, cur, stat_id, rfid, unix, est_procc_t, cmd1, val1, cmd2, val2):
+def dynamic_data_entry(sql_connection, cur, stat_id, rfid, unix, est_procc_t):
     date = str(datetime.datetime.fromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S'))
-    cur.execute("INSERT INTO dataProdStation(StationID, rfid, arrivalUnix, arrivalStamp, EstimProcessTime, command1, value1, command2, value2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (stat_id, rfid, unix, date, est_procc_t, cmd1, val1, cmd2, val2))
+    cur.execute("INSERT INTO dataProdStation(StationID, rfid, arrivalUnixEpoch, arrivalDateTime, EstimProcessTime) VALUES (?, ?, ?, ?, ?)",
+            (stat_id, rfid, unix, date, est_procc_t))
     sql_connection.commit()
 
-def response_handler(time_stamp, arr_time_stamp, station_id, rf_id, estim_process_time):
+def minimalistic_response_handler(arr_time_stamp, station_id, rf_id, estim_process_time):
+
+def response_handler(arr_time_stamp, station_id, rf_id, estim_process_time):
+    
     # make xml
     root = etree.Element("server_response")
 
@@ -96,9 +99,10 @@ def response_handler(time_stamp, arr_time_stamp, station_id, rf_id, estim_proces
     estim_time_elem = etree.Element("estim_time")
     root.append(estim_time_elem)
     estim_time_elem.text = f"{estim_process_time}"
-
+    
     # decide on commands
-    wait_time = estim_process_time
+    #wait_time = estim_process_time
+    """
     if rf_id <= 5:
         side = "left"
     elif rf_id > 5:
@@ -111,35 +115,39 @@ def response_handler(time_stamp, arr_time_stamp, station_id, rf_id, estim_proces
         cmd_type_elem.text = f"{command_type}"
         cmd_value_elem = etree.SubElement(command_elem, "val")
         cmd_value_elem.text = f"{value}"
-
+    """
+    """
     wait_cmd_str = "wait"
     junction_cmd_str = "junction"
     make_xml_cmd(wait_cmd_str, wait_time)
     make_xml_cmd(junction_cmd_str, side)
+    """
     print('\n{:-^70}'.format('Server response info - summary'))
-    print ("{:<15} {:<10} {:<25} {:<15}".format('Station ID','RFID','Response time stamp','Estimated processing time'))
-    print ("{:<15} {:<10} {:<25} {:<15}".format(station_id, rf_id, time_stamp, estim_process_time))
+    print ("{:<15} {:<10} {:<25} {:<15}".format('Station ID','RFID','Time stamp','Estimated processing time'))
+    print ("{:<15} {:<10} {:<25} {:<15}".format(station_id, rf_id, arr_time_stamp, estim_process_time))
     # print(f"Station ID: {station_id}\t\tRFID: {rfid}\t\tCommands sent at: {time_stamp}\t\tEstimated processing time: {estim_process_time}")
+    """
     print('\n{:-^70}'.format('Server response commands - summary'))
     print ("{:<15} {:<10}".format('Command','Value'))
     print ("{:<15} {:<10}".format(wait_cmd_str, wait_time))
     print ("{:<15} {:<10}".format(junction_cmd_str, side))
-
+    """
     
     # make SQLite database
     conn = sqlite3.connect('PLC_data.db')
     c = conn.cursor()
     create_table(c) # if not exists
     # add to the log
-    dynamic_data_entry(conn, c, station_id, rf_id, arr_time_stamp, estim_process_time, wait_cmd_str, wait_time, junction_cmd_str, side)
+    dynamic_data_entry(conn, c, station_id, rf_id, arr_time_stamp, estim_process_time)
     # close the database
     c.close()
     conn.close()
 
     #indent_xml(root)
 
-    tree = etree.ElementTree(root)
-    msg = etree.tostring(root, encoding="unicode", method="xml")
+    #tree = etree.ElementTree(root)
+    #msg = etree.tostring(root, encoding="unicode", method="xml")
+    msg = f"T#{estim_process_time}ms"
     return msg
 
 def xml_string_parser(recieved_xml_string):
@@ -156,8 +164,9 @@ def xml_string_parser(recieved_xml_string):
         <request>estim_time</request>
         <request>command</request>
     </arrival>
+    <arrival><station>10</station><carrier>8</carrier></arrival>
     '''
-
+    """
     prefix = "<arrival>"
     suffix = "</arrival>"   
     if recieved_xml_string.startswith(prefix) == False or recieved_xml_string.endswith(suffix) == False:
@@ -166,23 +175,26 @@ def xml_string_parser(recieved_xml_string):
         #full_msg = ''
         #continue
     else:
-        tree = etree.ElementTree(etree.fromstring(recieved_xml_string))
-        root = tree.getroot()
-        # children = root.getchildren()
-        # print(children) # prints out the list of the root children
+    """
+    tree = etree.ElementTree(etree.fromstring(recieved_xml_string))
+    root = tree.getroot()
+    # children = root.getchildren()
+    # print(children) # prints out the list of the root children
+    """
+    for time_stamp_elem in root.iter("time_stamp"):
+        carrier_arrival_time_stamp = time_stamp_elem.text
+    """
+    for station_elem in root.iter("station"):
+        #for station_id_elem in station_elem.iter("ID"):
+            #station_id_recieved = station_id_elem.text
+        station_id_recieved = station_elem.text
 
-        for time_stamp_elem in root.iter("time_stamp"):
-            carrier_arrival_time_stamp = time_stamp_elem.text
-
-        for station_elem in root.iter("station"):
-            for station_id_elem in station_elem.iter("ID"):
-                station_id_recieved = station_id_elem.text
-
-        for carrier_elem in root.iter("carrier"):
-            for rfid_elem in carrier_elem.iter("RFID"):
-                rfid_recieved = rfid_elem.text
-                rfid_recieved_sticker = rfid_dictionary[int(rfid_recieved)]
-        return float(carrier_arrival_time_stamp), int(station_id_recieved), rfid_recieved_sticker
+    for carrier_elem in root.iter("carrier"):
+        #for rfid_elem in carrier_elem.iter("RFID"):
+            #rfid_recieved = rfid_elem.text
+        rfid_recieved = carrier_elem.text
+        rfid_recieved_sticker = rfid_dictionary[int(rfid_recieved)]
+    return int(station_id_recieved), rfid_recieved_sticker
 
 
 if __name__ == "__main__":
@@ -218,7 +230,7 @@ if __name__ == "__main__":
         full_recieved_from_client = ''
         new_msg = True
         while True:
-            msg = clientsocket.recv(128)
+            msg = clientsocket.recv(64)
             msg_decoded = msg.decode('utf-8')
             if new_msg:
                 print('received: ' + msg_decoded)
@@ -227,25 +239,26 @@ if __name__ == "__main__":
                 msglen = int(msg[:HEADERSIZE])
                 new_msg = False
 
-            # print(f"full message length: {msglen}")
+                # print(f"full message length: {msglen}")
 
-            full_recieved_from_client += msg.decode("utf-8")
-            # print(len(full_recieved_from_client))
+                full_recieved_from_client += msg.decode("utf-8")
+                # print(len(full_recieved_from_client))
 
 
-            if len(full_recieved_from_client)-HEADERSIZE == msglen:
-                print('\n{:*^70}'.format(''))
-                print('{:*^70}'.format('Full client message recieved'))
+                if len(full_recieved_from_client)-HEADERSIZE == msglen:
+                    print('\n{:*^70}'.format(''))
+                    print('{:*^70}'.format('Full client message recieved'))
 
-                recieved_from_client_cleaned = full_recieved_from_client [HEADERSIZE:]
-                print(f"Message length: {msglen}")
-                print("Full msg recieved:")
-                print(recieved_from_client_cleaned)
+                    recieved_from_client_cleaned = full_recieved_from_client [HEADERSIZE:]
+                    print(f"Message length: {msglen}")
+                    print("Full msg recieved:")
+                    print(recieved_from_client_cleaned)
                 """
-                carrier_arr_time_stamp, station_id_recv, rfid_recv = xml_string_parser(msg_decoded)
-                
+                station_id_recv, rfid_recv = xml_string_parser(msg_decoded)
+                carrier_arr_time_stamp = time.time()
                 print('\n{:-^70}'.format('Carrier arrival - summary'))
                 print ("{:<15} {:<10} {:<15}".format('Station ID','RFID','Arrival time stamp'))
+                
                 print ("{:<15} {:<10} {:<15}".format(station_id_recv, rfid_recv, carrier_arr_time_stamp))
                 # print(f"Station ID: {station_id_recv}\t\tRFID: {rfid_recv}\t\tArrived at: {carrier_arr_time_stamp}")
                 
@@ -257,13 +270,17 @@ if __name__ == "__main__":
                 # save to log here
                 
                 # write server response
-                server_response_time_stamp = time.time()
-                server_response_xml_string = response_handler(server_response_time_stamp, carrier_arr_time_stamp, station_id_recv, rfid_recv, estimated_process_time)
-
+                
+                #server_response_xml_string = response_handler(carrier_arr_time_stamp, station_id_recv, rfid_recv, estimated_process_time)
+                """
                 print('\n{:-^70}'.format('Send response message to the client'))
                 print(server_response_xml_string)
                 msg = f'{len(server_response_xml_string):<{HEADERSIZE}}'+server_response_xml_string # check f-string formatting
                 clientsocket.send(bytes(msg, "utf-8"))
-                print("\nWaiting for client requests..."
+                
+                """
+                server_response_xml_string = response_handler(carrier_arr_time_stamp, station_id_recv, rfid_recv, estimated_process_time)
+                clientsocket.send(bytes(server_response_xml_string, "utf-8"))
+                print("\nWaiting for client requests...")
                 new_msg = True
                 full_recieved_from_client = ""
