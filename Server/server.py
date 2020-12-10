@@ -1,9 +1,64 @@
+import os
+import csv
+import sys
+# import pandas as pd
 import sqlite3
 import socket
 import time
 import datetime
 import xml.etree.ElementTree as etree
 # https://www.tutorialspoint.com/the-elementtree-xml-api-in-python
+
+class ProcessingTimesFinder():
+
+    def __init__(self, filename):
+        ## read csv
+        self.path = os.path.dirname(__file__) #find the directory of this source file
+        '''
+        #check if the directory is correct
+        path = os.getcwd() # get current working directory
+        print(path)
+        '''
+        
+        self.file_name = os.path.join(self.path, filename)
+        '''
+        # load csv with panda
+        self.data_frame = pd.read_csv(self.file_name) #import csv
+        self.data_frame.info()
+        print (self.data_frame)
+        self.processing_times_array = self.data_frame.select_dtypes(include=int).to_numpy()
+        print (self.processing_times_array) # whole array
+        '''
+
+        self.station_ids = []
+        self.carrier_ids = []
+        self.csv_data = []
+
+        with open('processing_times_table.csv', newline='') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=',', quotechar=',')
+            for index, row in enumerate(spamreader, start=0):
+                if index == 0:
+                    self.station_ids = row
+                    print('\n{:-^100}'.format('Carrier RFID (row 1 - 16) x Station ID (row 1 - 16) matrix'))
+                else:
+                    self.carrier_ids.append(row.pop(0))
+                    self.csv_data.append(row)
+                    print(row)
+
+        '''
+        # help regarding the processing_times_array
+        print(processing_times_array[0,0]) # Carrier#1 Station#01
+        print(processing_times_array[0,1]) # Carrier#1 Station#02
+        # ...
+        print(processing_times_array[15,15]) # Carrier#16 Station#16
+        '''
+        
+    def get_est_proc_time(self, carrier_RFID, station_ID):
+        '''
+        find the estimated processing time
+        '''
+        estimated_process_time = self.csv_data[carrier_RFID - 1][ station_ID - 1]
+        return estimated_process_time
 
 def create_table(curs):
     curs.execute("CREATE TABLE IF NOT EXISTS dataProdStation(StationID INTEGER, rfid INTEGER, arrivalUnix REAL, arrivalStamp TEXT, EstimProcessTime REAL, command1 TEXT, value1 REAL, command2 TEXT, value2 TEXT)")
@@ -40,9 +95,8 @@ def response_handler(time_stamp, arr_time_stamp, station_id, rf_id, estim_proces
     wait_time = estim_process_time
     if rf_id <= 5:
         side = "left"
-        wait_time = wait_time + 2 # 2 seconds
     elif rf_id > 5:
-        side = "straight"
+        side = "right"
 
     def make_xml_cmd(command_type, value):
         command_elem = etree.Element("command")
@@ -108,7 +162,7 @@ def xml_string_parser(recieved_xml_string):
     else:
         tree = etree.ElementTree(etree.fromstring(recieved_xml_string))
         root = tree.getroot()
-        children = root.getchildren()
+        # children = root.getchildren()
         # print(children) # prints out the list of the root children
 
         for time_stamp_elem in root.iter("time_stamp"):
@@ -141,14 +195,20 @@ def indent_xml(elem, level=0):
 
 
 if __name__ == "__main__":
-    
-    
-    
+    print(sys.version)
+    print(sys.executable)
+    print('\n{:-^70}'.format('Server startup'))
+
+    # initialize ProcessingTimesFinder
+    ptf = ProcessingTimesFinder('processing_times_table.csv')
+   
 
     # figxed length header
     HEADERSIZE = 10
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # HOST, PORT = "172.20.66.102", 65432 # change the port according to the needs
+    # HOST, PORT = "localhost", 9999 # change the port according to the needs   
     s.bind((socket.gethostname(), 1234)) # localhost, port name
     s.listen(5) #queue of 5 msgs
 
@@ -166,7 +226,6 @@ if __name__ == "__main__":
         '''
         msg = "Welcome to the server!"
         msg = f"{len(msg):<{HEADERSIZE}}"+msg
-
         clientsocket.send(bytes(msg,"utf-8"))
         '''
 
@@ -203,7 +262,10 @@ if __name__ == "__main__":
                 # print(f"Station ID: {station_id_recv}\t\tRFID: {rfid_recv}\t\tArrived at: {carrier_arr_time_stamp}")
                 
                 # get estimated process time
-                estimated_process_time = 112233445566 #ptf.get_est_proc_time(rfid, station_id)
+                # estimated_process_time = 112233445566 # test
+                print(f"rfid_recv: {rfid_recv}")
+                print(f"station_id_recv: {station_id_recv}")
+                estimated_process_time = ptf.get_est_proc_time(rfid_recv, station_id_recv)
                 # save to log here
                 
                 # write server response
