@@ -1,18 +1,23 @@
 PROGRAM PLC_PRG
 VAR
-	state			:	INT := 0;
-	stationID		:	UINT:= 12;
-	TCPclient		:	DC_ECP.TcpClientByteStream;
+	state 			:   DINT := 0;
+	stationID		:	UINT:= 10;
+	TCPclient		:	dc_ecp.TcpClientByteStream;
 	timer			:	TON;
 	RFID			:	dc_ecp.Dtm425;
 	rfidData		:	dc_ecp.st_CPF_RfidData;
 	carrierID		:	UINT;
 	wait_var		:	TIME := TIME#1s0ms;
-	junction		:	WSTRING := 'left';
-	send_xml_string	:	WSTRING;
-	wait_string: WSTRING;
+	send_xml_string	:	STRING;
+	wait_string: STRING;
 	send_xml_string_length : DINT;	// double int
 	pstData: INT;
+	dateandtime: DTU.GetDateAndTime;
+	StrLenA: INT;
+	time_stamp: DATE_AND_TIME;
+	str_length: UINT;
+	headersize: UINT := 10;
+	length_length: UINT;
 END_VAR	
 
 	///////////////////////////
@@ -37,16 +42,16 @@ END_VAR
 	//xQA1_STOP	AT %QX0.7	: BOOL;	// Conveyor Stop
 
 
+TCPclient();
 CASE state OF
 	
 	0: //initialisation
 	IO.xQA1_RIGHT := TRUE; // make the conveyor going to the right run
 	// to make a loop
-	IO.xQA1_LEFT := TRUE; // make the conveyor going to the left run
-	
+
 	IO.xMB20 := FALSE; // stopper not released
 	RFID.ClearError(); // clear the RFID sensor memory
-	TCPclient.Connect(sIP:='172.20.66.102', uiPort:=65432); // connect to the Server on PC
+	TCPclient.Connect(sIP:='172.20.66.48', uiPort:=65431); // connect to the Server on PC
 	state := 1;
 	
 	1: //wait for RFID to clear
@@ -81,65 +86,106 @@ CASE state OF
 	RFID.ReadTag(uiStartAddress:=0,uiDataLength:=SIZEOF(rfidData), pData:=ADR(rfidData));
 	state := 7;
 	
-	
-	
 	7: //wait for RFID read being finished 
 	IF RFID.xReady THEN
 		carrierID := rfidData.uiCarrierID;
-		// todo format the XML string, insert the timestamp, stationID and carrierID.
+		// todo format the XML string, insert the timestamp, stationID and carrierID. ok
 		// formatting of the time in s ms according to the estimated processing time
-		// delimitation of messages, in python we have a header with a string length
-		//xml server response parsing
+		// delimitation of messages, in python we have a header with a string length  
+		// xml server response parsing ans: send back the wait time only, no xml
 		
-		send_xml_string := "<arrival><timestamp>timestamp</timestamp><station><ID>10</ID></station><carrier><RFID>1</RFID></carrier></arrival>";
-		send_xml_string := stu.StrConcatA(pstFrom:= send_xml_string, pstTo:= send_xml_string, iBufferSize:= 10);
-		stu.StrConcatA
-		send_xml_string_length := StrLenW(pstData := send_xml_string );
-		
-		dc_ecp.TcpClientByteStream();
+		dateandtime(xExecute:=TRUE);
 		state := 8;
 	END_IF
 	
-	8: //wait for the tcp being ready, and send the RFID data
-	IF TCPclient.xReady THEN
-		TCPclient.Send(pToSend:=ADR(rfidData.uiCarrierID), uiSizeToSend:=SIZEOF(rfidData.uiCarrierID));
+	8:
+	IF dateandtime.xDone THEN
+		//time_stamp := dateandtime.dtDateAndTime;
+		// problem: it is possible to make only strings 81 char or shorter
+		//send_xml_string := "<arrival><station>10</station><carrier>8</carrier></arrival>";
+		send_xml_string := dc_ecp.CONCAT('<arrival><station>',UINT_TO_STRING(stationID));
+		send_xml_string := dc_ecp.CONCAT(send_xml_string,'</station><carrier>');
+		send_xml_string := dc_ecp.CONCAT(send_xml_string,UINT_TO_STRING(carrierID));
+		send_xml_string := dc_ecp.CONCAT(send_xml_string,'</carrier></arrival>');
+		//str_length := SIZEOF(send_xml_string);
+		//length_length := SIZEOF(UINT_TO_STRING(str_length));
+		//header_size - length_length;
+		//send_xml_string := dc_ecp.CONCAT(UINT_TO_STRING(length), send_xml_string);
+		//dc_ecp.TcpClientByteStream();
 		state := 9;
 	END_IF
 	
-	9: //wait to receive te server response
+	9: //wait for the tcp being ready, and send the RFID data
 	IF TCPclient.xReady THEN
-		TCPclient.Receive(pToReceive:=ADR(rfidData.uiCarrierID), uiSizeToReceive:=SIZEOF(rfidData.uiCarrierID));
-		
-		wait_string := "TIME#1s0ms";
-		wait_var := STRING_TO_TIME(wait_string);
-		// PROCESS DATA RECEIVED HERE!
+		TCPclient.Send(pToSend:=ADR(send_xml_string), uiSizeToSend:=SIZEOF(send_xml_string));
 		state := 10;
 	END_IF
-
-	10: // initialization of timer
-		
-		timer(IN := TRUE, PT := wait_var); // find how to insert wait time here
+	
+	10: //wait to receive te server response
+	IF TCPclient.xReady THEN
+		TCPclient.Receive(pToReceive:=ADR(wait_string), uiSizeToReceive:=SIZEOF(wait_string));
+		// wait_string will be in a format: 'T#4065ms'
+		//wait_string := "TIME#1s0ms"; 
+		wait_var := STRING_TO_TIME(wait_string);
+		// PROCESS DATA RECEIVED HERE!
 		state := 11;
+	END_IF
+
+	11: // initialization of timer
+		timer(IN := TRUE, PT := wait_var);
+		state := 12;
 		
-	11: // wait for the timer, then release the carrier
+	12: // wait for the timer, then release the carrier
 	IF timer.Q = TRUE THEN
 		timer(IN := FALSE); // reset the timer
 		IO.xMB20 := TRUE; // stopper released, releasing the carrier
-		IF junction = 'left' THEN
-			// switch junction to left
-		END_IF
-		IF junction = 'right' THEN
-			// switch junction to right
-		END_IF
-		state := 12;
+		state := 13;
 	END_IF
 	
-	12: //wait for carrier to pass
+	13: //wait for carrier to pass
 	IF IO.xBG21 = FALSE THEN
 		IO.xMB20 := FALSE; // stopper not released
 		state := 1;
 	END_IF
 	
 END_CASE
+RFID();
+dateandtime();
+timer();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 TCPclient();
 RFID();
+dateandtime();
