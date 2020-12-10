@@ -9,6 +9,11 @@ import datetime
 import xml.etree.ElementTree as etree
 # https://www.tutorialspoint.com/the-elementtree-xml-api-in-python
 
+rfid_dictionary =	{
+  1280: 5,
+  2048: 8
+}
+
 class ProcessingTimesFinder():
 
     def __init__(self, filename):
@@ -176,23 +181,8 @@ def xml_string_parser(recieved_xml_string):
         for carrier_elem in root.iter("carrier"):
             for rfid_elem in carrier_elem.iter("RFID"):
                 rfid_recieved = rfid_elem.text
-        return float(carrier_arrival_time_stamp), int(station_id_recieved), int(rfid_recieved)
-
-
-def indent_xml(elem, level=0):
-    i = "\n" + level*"  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent_xml(elem, level+1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
+                rfid_recieved_sticker = rfid_dictionary[int(rfid_recieved)]
+        return float(carrier_arrival_time_stamp), int(station_id_recieved), rfid_recieved_sticker
 
 
 if __name__ == "__main__":
@@ -202,28 +192,23 @@ if __name__ == "__main__":
 
     # initialize ProcessingTimesFinder
     ptf = ProcessingTimesFinder('processing_times_table.csv')
-   
-
-    # figxed length header
-    HEADERSIZE = 10
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # HOST, PORT = "172.20.66.102", 65432 # change the port according to the needs
-    # HOST, PORT = "localhost", 9999 # change the port according to the needs   
-    s.bind((socket.gethostname(), 1234)) # localhost, port name
-    s.listen(5) #queue of 5 msgs
-
+    
+    # Bind the socket to the port
+    #server_address = ('172.20.66.48', 65432)
+    s.bind((socket.gethostname(), 65431))
+    s.listen(1)
+    clientsocket, address = s.accept()
+    # now our endpoint knows about the OTHER endpoint.
+    print(f"Connection from {address} has been established.")
 
     # arbitrary variables just for testing
-    station_id_recv = 12
-    rfid_recv = 8
+    #station_id_recv = 12
+    #rfid_recv = 8
     
 
     while True:
-        clientsocket, address = s.accept()
-        # now our endpoint knows about the OTHER endpoint.
-        print(f"Connection from {address} has been established.")
-
         '''
         msg = "Welcome to the server!"
         msg = f"{len(msg):<{HEADERSIZE}}"+msg
@@ -233,9 +218,11 @@ if __name__ == "__main__":
         full_recieved_from_client = ''
         new_msg = True
         while True:
-            msg = clientsocket.recv(16)
-
+            msg = clientsocket.recv(128)
+            msg_decoded = msg.decode('utf-8')
             if new_msg:
+                print('received: ' + msg_decoded)
+                """
                 # print("Message length:",msg[:HEADERSIZE])
                 msglen = int(msg[:HEADERSIZE])
                 new_msg = False
@@ -243,7 +230,6 @@ if __name__ == "__main__":
             # print(f"full message length: {msglen}")
 
             full_recieved_from_client += msg.decode("utf-8")
-
             # print(len(full_recieved_from_client))
 
 
@@ -255,7 +241,8 @@ if __name__ == "__main__":
                 print(f"Message length: {msglen}")
                 print("Full msg recieved:")
                 print(recieved_from_client_cleaned)
-                carrier_arr_time_stamp, station_id_recv, rfid_recv = xml_string_parser(recieved_from_client_cleaned)
+                """
+                carrier_arr_time_stamp, station_id_recv, rfid_recv = xml_string_parser(msg_decoded)
                 
                 print('\n{:-^70}'.format('Carrier arrival - summary'))
                 print ("{:<15} {:<10} {:<15}".format('Station ID','RFID','Arrival time stamp'))
@@ -277,7 +264,6 @@ if __name__ == "__main__":
                 print(server_response_xml_string)
                 msg = f'{len(server_response_xml_string):<{HEADERSIZE}}'+server_response_xml_string # check f-string formatting
                 clientsocket.send(bytes(msg, "utf-8"))
-                print("\nWaiting for client requests...")
-
+                print("\nWaiting for client requests..."
                 new_msg = True
                 full_recieved_from_client = ""
