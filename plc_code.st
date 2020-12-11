@@ -7,8 +7,10 @@ VAR
 	RFID			:	dc_ecp.Dtm425;
 	rfidData		:	dc_ecp.st_CPF_RfidData;
 	carrierID		:	UINT;
-	wait_var		:	TIME := TIME#1s0ms;
+	wait_var		:	TIME := T#1S0MS;
+	send_xml_wstring	:	WSTRING;
 	send_xml_string	:	STRING;
+	wait_wstring: WSTRING;
 	wait_string: STRING;
 	send_xml_string_length : DINT;	// double int
 	pstData: INT;
@@ -18,6 +20,7 @@ VAR
 	str_length: UINT;
 	headersize: UINT := 10;
 	length_length: UINT;
+	wstring_mode: BOOL := TRUE;
 END_VAR	
 
 	///////////////////////////
@@ -41,8 +44,6 @@ END_VAR
 	//xQA1_SLOW	AT %QX0.6	: BOOL;	// Conveyor Slow
 	//xQA1_STOP	AT %QX0.7	: BOOL;	// Conveyor Stop
 
-
-TCPclient();
 CASE state OF
 	
 	0: //initialisation
@@ -98,15 +99,18 @@ CASE state OF
 		state := 8;
 	END_IF
 	
-	8:
-	
+	8: // make a string to send 
 		//time_stamp := dateandtime.dtDateAndTime;
 		// problem: it is possible to make only strings 81 char or shorter
 		//send_xml_string := "<arrival><station>10</station><carrier>8</carrier></arrival>";
+		
+		
+		
 		send_xml_string := dc_ecp.CONCAT('<arrival><station>',UINT_TO_STRING(stationID));
 		send_xml_string := dc_ecp.CONCAT(send_xml_string,'</station><carrier>');
 		send_xml_string := dc_ecp.CONCAT(send_xml_string,UINT_TO_STRING(carrierID));
 		send_xml_string := dc_ecp.CONCAT(send_xml_string,'</carrier></arrival>');
+		
 		//str_length := SIZEOF(send_xml_string);
 		//length_length := SIZEOF(UINT_TO_STRING(str_length));
 		//header_size - length_length;
@@ -116,16 +120,27 @@ CASE state OF
 	
 	9: //wait for the tcp being ready, and send the RFID data
 	IF TCPclient.xReady THEN
-		TCPclient.Send(pToSend:=ADR(send_xml_string), uiSizeToSend:=SIZEOF(send_xml_string));
+		//TCPclient.SendAndReceive(pToSend:=ADR(send_xml_string), uiSizeToSend:=SIZEOF(send_xml_string), pToReceive:=ADR(wait_string), uiSizeToReceive:=SIZEOF(wait_string));
+		IF wstring_mode = TRUE THEN
+			send_xml_wstring := STRING_TO_WSTRING(send_xml_string);
+			TCPclient.Send(pToSend:=ADR(send_xml_wstring), uiSizeToSend:=SIZEOF(send_xml_wstring));
+		ELSE
+			TCPclient.Send(pToSend:=ADR(send_xml_string), uiSizeToSend:=SIZEOF(send_xml_string));
+		END_IF
 		state := 10;
 	END_IF
 	
 	10: //wait to receive te server response
 	IF TCPclient.xReady THEN
-		TCPclient.Receive(pToReceive:=ADR(wait_string), uiSizeToReceive:=SIZEOF(wait_string));
+		IF wstring_mode = TRUE THEN
+			wait_wstring :=	TCPclient.Receive(pToReceive:=ADR(wait_wstring), uiSizeToReceive:=SIZEOF(wait_wstring));
+			wait_var := WSTRING_TO_TIME(wait_wstring);
+		ELSE
+			TCPclient.Receive(pToReceive:=ADR(wait_string), uiSizeToReceive:=SIZEOF(wait_string));
+			wait_var := STRING_TO_TIME(wait_string);
+		END_IF
+		
 		// wait_string will be in a format: 'T#4065ms'
-		//wait_string := "TIME#1s0ms"; 
-		wait_var := STRING_TO_TIME(wait_string);
 		// PROCESS DATA RECEIVED HERE!
 		state := 11;
 	END_IF
@@ -149,42 +164,5 @@ CASE state OF
 	
 END_CASE
 RFID();
-dateandtime();
 timer();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 TCPclient();
-RFID();
-dateandtime();
