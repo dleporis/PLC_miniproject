@@ -7,11 +7,11 @@ Create two programs:
 
 The programs must perform the following operations:
 
-- [ ] Read the pallet RFID tag when a pallet moves to the module you are working on
+- [X] Read the pallet RFID tag when a pallet moves to the module you are working on
       (we are not sure if our functionality currently fullfills this)
-- [ ] Send the RFID info to a PC via TCP/IP as an XML-encoded string (TODO)
+- [X] Send the RFID info to a PC via TCP/IP as an XML-encoded string (TODO)
 - [x] The PC program shall decode the information and display the relevant information on screen during program execution
-- [x] The PC program shall return an estimated processing time to the PLC via TCP/IP (check the .csv according to the RFID tag)
+- [ ] The PC program shall return an estimated processing time to the PLC via TCP/IP (check the .csv according to the RFID tag)
 - [ ] The PLC shall simulate the physical processing time by letting the pallet wait for the returned time.
 - [x] The decoded data shall be stored in a file on the PC, so that it can be analyzed later.
 
