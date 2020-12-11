@@ -1,13 +1,13 @@
 PROGRAM PLC_PRG
 VAR
 	state 			:   DINT := 0;
-	stationID		:	UINT:= 10;
+	stationID		:	UINT:= 9;
 	TCPclient		:	dc_ecp.TcpClientByteStream;
 	timer			:	TON;
 	RFID			:	dc_ecp.Dtm425;
 	rfidData		:	dc_ecp.st_CPF_RfidData;
 	carrierID		:	UINT;
-	wait_var		:	TIME := T#1S0MS;
+	wait_var		:	INT;
 	send_xml_wstring	:	WSTRING;
 	send_xml_string	:	STRING;
 	wait_wstring: WSTRING;
@@ -20,8 +20,10 @@ VAR
 	str_length: UINT;
 	headersize: UINT := 10;
 	length_length: UINT;
-	wstring_mode: BOOL := TRUE;
-END_VAR	
+	wstring_mode: BOOL := FALSE;
+	input : WORD;
+	realitime: WORD;
+END_VAR		
 
 	///////////////////////////
 	// Inputs
@@ -132,21 +134,21 @@ CASE state OF
 	
 	10: //wait to receive te server response
 	IF TCPclient.xReady THEN
-		IF wstring_mode = TRUE THEN
-			wait_wstring :=	TCPclient.Receive(pToReceive:=ADR(wait_wstring), uiSizeToReceive:=SIZEOF(wait_wstring));
-			wait_var := WSTRING_TO_TIME(wait_wstring);
-		ELSE
-			TCPclient.Receive(pToReceive:=ADR(wait_string), uiSizeToReceive:=SIZEOF(wait_string));
-			wait_var := STRING_TO_TIME(wait_string);
-		END_IF
-		
+			TCPclient.Receive(pToReceive:=ADR(input), uiSizeToReceive:= SIZEOF(input);
+			realitime := dc_ecp.SwapWORD(input);
+			wait_var := WORD_TO_INT(realitime);
+			//wait_string := dc_ecp.CONCAT('T#', wait_string);
+			//wait_string := dc_ecp.CONCAT(wait_string, 'MS');
+			
+			//wait_var := STRING_TO_TIME(wait_string);
 		// wait_string will be in a format: 'T#4065ms'
 		// PROCESS DATA RECEIVED HERE!
 		state := 11;
 	END_IF
 
 	11: // initialization of timer
-		timer(IN := TRUE, PT := wait_var);
+		
+		timer(IN := TRUE, PT := INT_TO_TIME(wait_var));
 		state := 12;
 		
 	12: // wait for the timer, then release the carrier
