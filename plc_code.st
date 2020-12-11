@@ -94,12 +94,12 @@ CASE state OF
 		// delimitation of messages, in python we have a header with a string length  
 		// xml server response parsing ans: send back the wait time only, no xml
 		
-		dateandtime(xExecute:=TRUE);
+		
 		state := 8;
 	END_IF
 	
 	8:
-	IF dateandtime.xDone THEN
+	
 		//time_stamp := dateandtime.dtDateAndTime;
 		// problem: it is possible to make only strings 81 char or shorter
 		//send_xml_string := "<arrival><station>10</station><carrier>8</carrier></arrival>";
@@ -113,7 +113,6 @@ CASE state OF
 		//send_xml_string := dc_ecp.CONCAT(UINT_TO_STRING(length), send_xml_string);
 		//dc_ecp.TcpClientByteStream();
 		state := 9;
-	END_IF
 	
 	9: //wait for the tcp being ready, and send the RFID data
 	IF TCPclient.xReady THEN
