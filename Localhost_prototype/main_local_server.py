@@ -1,7 +1,6 @@
 import os
 import csv
 import sys
-# import pandas as pd
 import sqlite3
 import socket
 import time
