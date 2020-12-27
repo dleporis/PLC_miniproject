@@ -1,0 +1,17 @@
+import socket
+import time
+
+HOST = '127.0.0.1'  # The server's hostname or IP address
+PORT = 65432        # The port used by the server
+file = open(r"C:\Users\shans\PycharmProjects\ServerSec\venv\Scripts\MiniXML", "rb")
+stream = file.read()
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    #s.sendall(b'Hello world')
+    s.sendall(stream)
+    order = s.recv(1024)
+    strings = order.decode('utf8')
+    t = int(strings)
+    time.sleep(t)
+    print("the server told me to sleep for: ", t, " seconds")
