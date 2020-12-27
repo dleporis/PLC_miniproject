@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data>
+  <carrier>
+    <RFID>2B </RFID>
+  </carrier>
+  <station>
+  <ID>A2 </ID>
+  </station>
+  <ETA>
+    <arrival>9S </arrival>
+  </ETA>
+</data>
