@@ -1,0 +1,78 @@
+import socket
+import sys                                  #Might not be necessary. Didn't check.
+import time
+import xml.etree.ElementTree as ET          # We use ElementTree to parse the XML file.
+
+def XML_Parser(data):                       #XML parser
+    #tree = ET.parse(data)
+    #root = tree.getroot()
+    root = ET.fromstring(data)
+    #this line SHOULD create a .txt file named PLCData. However, this doesn't seem to work.
+   # root = tree.getroot()
+   
+    carrier = root.find('carrier')          #we look through the XML string and find everything containing carrier.
+    RFID = carrier.find('RFID').text        #in the carrier we find everything containing text about the RFID.
+    print(RFID)
+    #for i in range(1):                      #adding data to .txt file. However this line wants an intiger.
+
+    station = root.find('station')          #same as in carrier and RFID.
+    ID = station.find('ID').text
+    print(ID)
+    #for i in range(1):                      #adding data to .txt file
+    #f.write("station %d\r\n" % station)
+
+    ETA = root.find('ETA')
+    arrived_time = ETA.find('arrival').text
+    print(arrived_time)
+    #for i in range(1):                      #adding data to .txt file
+    #f.write("station %d\r\n" % station)
+    with open("PLCData.txt", "w") as text_file:     #telling the program to write a file with the data. File is in source, when using Visual studio.
+        print(f"RFID: {RFID}", file=text_file)      #Writing the RFID.
+        print(f"ID: {ID}", file=text_file)          #writing the ID.
+        print(f"arrived_time: {arrived_time}", file=text_file)      #writing the time.
+    #text_file.close()
+    
+
+
+HOST = '127.0.0.1'		    # Symbolic name, meaning all available interfaces
+PORT = 65432				# Arbitrary non-privileged port
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print ('Socket created')
+
+t = input("enter sleep command for client: ")
+
+#Bind socket to local host and port
+try:
+	s.bind((HOST, PORT))
+except socket.error as msg:
+	print ("Bind failed. Error Code : ") + str(msg[0]) + (' Message ') + msg[1]
+	sys.exit()
+	
+print ('Socket bind complete')
+
+#Start listening on socket
+s.listen()
+print ('Socket now listening')
+
+#now keep talking with the client.
+#wait to accept a connection.
+conn, addr = s.accept()
+
+
+with conn:
+    print('Connected by', addr)
+    while True:
+        #use XML parser
+        data = conn.recv(1024)
+        if not data:
+            break
+
+        print('Received data:', data)
+        XML_Parser(data)
+        #telling the client to sleep
+        conn.send(str(t).encode('utf8'))
+        print("told the client to sleep for ", t ," seconds. Terminating connection.")
+
+        #we are now done. Terminate the connection.
+        s.close()
