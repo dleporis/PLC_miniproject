@@ -48,7 +48,7 @@ CASE state OF
 	END_IF
 	
 	4: //wait for carrier to approach
-	IF IO.xBG22 = TRUE THEN
+	IF IO.xBG24 = TRUE THEN
 		xQA1_SLOW := TRUE; // slow down the conveyor
 		state := 5;
 	END_IF
