@@ -5,6 +5,7 @@ This project contains two prototypes:
 * PLC - server prototype itself
 
 Both are striving to fullfill the following requirements:
+      
       Create two programs:
 
       * A PLC program (TCP client) that controls the physical system
